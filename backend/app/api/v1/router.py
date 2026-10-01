@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1 import health, trains, simulation, stations, sections, alerts, analytics
+from app.api.v1 import health, trains, simulation, stations, sections, alerts, analytics, external_feed
 
 api_router = APIRouter()
 
@@ -23,6 +23,9 @@ api_router.include_router(simulation.router)
 
 # Analytics & AI Diagnostics at /api/v1/analytics
 api_router.include_router(analytics.router)
+
+# External data feed at /api/v1/external-feed
+api_router.include_router(external_feed.router)
 
 # NOTE: WebSocket (/ws/live-updates) is mounted at top-level in main.py, NOT here.
 # Mounting it here would register it as /api/v1/ws/live-updates (wrong path).

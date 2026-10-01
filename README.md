@@ -22,6 +22,10 @@ RailDrishti AI addresses the Smart India Hackathon challenge of leveraging AI/ML
 - **Station Operations Dashboard** — Platform occupancy Gantt, action center, passenger information board preview
 - **Control-Room Dashboard** — Live corridor map, risk alerts, KPI cards, train telemetry table
 - **Hybrid ML + Rule-Based ETA** — LightGBM quantile regressors with physics-based fallback
+- **PostgreSQL Persistence** — Optional database storage with graceful in-memory fallback
+- **Redis Live Cache** — Optional caching layer with automatic degradation
+- **External Data Adapter** — Provider-agnostic architecture for third-party train status APIs
+- **Data Source Manager** — SIMULATOR / LIVE_API / HYBRID / PRODUCTION_AUTHORIZED modes
 
 ---
 
@@ -122,6 +126,81 @@ docker compose up --build
 
 ---
 
+## Data Persistence
+
+### PostgreSQL vs In-Memory Mode
+
+The backend supports two operating modes:
+
+- **Database Mode**: When PostgreSQL is reachable, train states, events, ETA predictions, and alerts are persisted at controlled intervals (default: 30 seconds).
+- **Memory-Only Mode**: When PostgreSQL is unavailable, the app continues fully functional with in-memory storage. No data is persisted.
+
+The health endpoint reports the current mode:
+```
+GET /api/v1/health
+```
+
+### Redis Live Cache
+
+Redis is used as an optional caching layer for:
+- Train live state (`train:{id}:live_state`, TTL: 120s)
+- Train ETA data (`train:{id}:eta`, TTL: 60s)
+- Section congestion (`section:{id}:congestion`, TTL: 60s)
+- Live alerts (`alerts:live`, TTL: 120s)
+
+If Redis is unavailable, the app continues with in-memory storage and reports Redis as degraded in the health API.
+
+### Database Seeding
+
+```powershell
+# Seed reference data (idempotent)
+python backend/scripts/seed_db.py
+
+# Reset and re-seed (destructive — requires confirmation)
+python backend/scripts/seed_db.py --reset
+
+# Docker mode
+docker compose exec backend python scripts/seed_db.py
+```
+
+---
+
+## Data Source Modes
+
+| Mode | Description |
+|------|-------------|
+| `SIMULATOR` | Kinematic simulator only (default for SIH demo) |
+| `LIVE_API` | External third-party API only |
+| `HYBRID` | API data when available, simulator for demo trains |
+| `PRODUCTION_AUTHORIZED` | Placeholder for authorized Railway feeds |
+
+The active mode is reported in the health API and displayed in the Admin Analytics dashboard.
+
+---
+
+## External Data Integration
+
+### Security Rules
+
+- API keys are stored in `.env` only — never committed to Git
+- All external data access happens only in the FastAPI backend
+- Frontend never makes direct calls to third-party APIs
+- Raw provider payloads are sanitized before storage
+- No credentials are stored in the database
+
+### Generic Third-Party API Adapter
+
+The external feed adapter is provider-agnostic. To configure:
+
+1. Set `LIVE_DATA_MODE=true` in `.env`
+2. Set `TRAIN_STATUS_API_BASE_URL` to the provider's base URL
+3. Set `TRAIN_STATUS_API_KEY` to your API key
+4. Customize the `normalize()` method in `backend/app/services/external_train_feed.py` to match the provider's response format
+
+See `docs/external-data-integration.md` for the full provider checklist.
+
+---
+
 ## API Documentation
 
 Interactive Swagger UI: **http://localhost:8000/docs**
@@ -168,6 +247,30 @@ Interactive Swagger UI: **http://localhost:8000/docs**
 - Mobile application (React Native)
 - SMS/WhatsApp notification gateway integration
 - Historical analytics and trend reporting
+
+---
+
+## Security Rules
+
+- API keys are stored in `.env` only — never committed to Git
+- All external data access happens only in the FastAPI backend
+- Frontend never makes direct calls to third-party APIs
+- Raw provider payloads are sanitized before storage
+- No credentials are stored in the database
+- No NTES/IRCTC scraping — only authorized APIs
+
+---
+
+## Production Integration Roadmap
+
+| Data Need | Current | Authorized Railway Source |
+|-----------|---------|---------------------------|
+| GPS / Train Location | Simulated | RTIS / REMMLOT |
+| Arrival/Departure Events | Simulated | COA (A/D Events) |
+| Timetable | Static CSV | NTES / FOIS |
+| Speed Restrictions | Simulated | CRS / Division Registers |
+| Weather | Simulated | IMD / Authorized Weather Feed |
+| Occupancy / Traffic | Simulated | Train Traffic Control Systems |
 
 ---
 

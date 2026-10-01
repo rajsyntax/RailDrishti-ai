@@ -24,6 +24,20 @@ cd frontend
 npm run dev
 ```
 
+### Verify Database Mode
+```powershell
+# Check database connectivity
+curl http://localhost:8000/api/v1/health | jq '.database_connected, .redis_connected, .operating_mode'
+
+# Expected in Docker: database_connected=true, redis_connected=true, operating_mode="database"
+# Expected local without DB: database_connected=false, redis_connected=false, operating_mode="memory-only"
+```
+
+### Seed Database (Optional)
+```powershell
+docker compose exec backend python scripts/seed_db.py
+```
+
 ---
 
 ## 2. Open Passenger Page
@@ -136,3 +150,32 @@ npm run dev
 
 - See `presentation/sih-deck-notes.md` for detailed talking points
 - See `docs/architecture.md` for system design details
+
+---
+
+## 13. Verify New Features (Optional)
+
+### Data Source Status Panel
+- Navigate to **http://localhost:5173/admin**
+- Observe **Data Source Status** panel showing:
+  - Source Mode (SIMULATOR/LIVE_API/HYBRID)
+  - Database/Redis connection status
+  - Active source and last external fetch
+
+### Source Badges
+- Check **Passenger**, **Control**, and **Admin** pages for source badges:
+  - `Prototype Simulation Data` (SIMULATOR mode)
+  - `Live Third-Party Train Status` (LIVE_API mode)
+  - `Hybrid API + Simulator` (HYBRID mode)
+
+### External Feed Status
+- Navigate to **http://localhost:8000/docs** → External Data Feed
+- Check **GET /external-feed/status** for polling status
+- If configured, test **POST /external-feed/trains/{train_number}/refresh**
+
+### Fallback Demo Path
+If PostgreSQL/Redis/External API is unavailable:
+1. Backend logs "Database unavailable — running in memory-only mode"
+2. All dashboards continue working with simulator data
+3. Health endpoint shows `operating_mode: "memory-only"`
+4. Source badges show `Prototype Simulation Data`

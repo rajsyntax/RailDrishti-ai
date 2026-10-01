@@ -33,24 +33,46 @@ import {
   EtaAccuracyResponse,
   DataQualityResponse
 } from '../services/railApi';
+import { SourceBadge } from '../components/common/SourceBadge';
+
+interface HealthStatus {
+  status: string;
+  operating_mode: string;
+  database_connected: boolean;
+  redis_connected: boolean;
+  simulator_status: string;
+  live_data_mode: boolean;
+  data_source: {
+    mode: string;
+    active_source: string;
+    last_external_fetch: string | null;
+    last_external_error: string | null;
+    external_fetch_count: number;
+    external_error_count: number;
+    source_freshness_seconds: number | null;
+  };
+}
 
 export const AdminAnalyticsPage: React.FC = () => {
   const [modelMetrics, setModelMetrics] = useState<ModelMetricsResponse | null>(null);
   const [etaAccuracy, setEtaAccuracy] = useState<EtaAccuracyResponse | null>(null);
   const [dataQuality, setDataQuality] = useState<DataQualityResponse | null>(null);
+  const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null);
   const [isRetraining, setIsRetraining] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const fetchAnalyticsData = async () => {
     try {
-      const [metrics, accuracy, quality] = await Promise.all([
+      const [metrics, accuracy, quality, health] = await Promise.all([
         railApi.getModelMetrics(),
         railApi.getEtaAccuracy(),
         railApi.getDataQuality(),
+        fetch('/api/v1/health').then(r => r.json() as Promise<HealthStatus>),
       ]);
       setModelMetrics(metrics);
       setEtaAccuracy(accuracy);
       setDataQuality(quality);
+      setHealthStatus(health);
     } catch (err) {
       console.warn('Error fetching admin analytics:', err);
     }
@@ -190,6 +212,39 @@ export const AdminAnalyticsPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* 0. Data Source Status Panel */}
+      {healthStatus && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+              <Database className="w-4 h-4 text-blue-600" />
+              Data Source Status
+            </h3>
+            <SourceBadge mode={healthStatus.data_source?.mode} compact />
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {[
+              { label: 'Source Mode', value: healthStatus.data_source?.mode || 'SIMULATOR', color: 'text-slate-900' },
+              { label: 'Active Source', value: healthStatus.data_source?.active_source || 'kinematic_simulator', color: 'text-blue-600' },
+              { label: 'Database', value: healthStatus.database_connected ? 'Connected' : 'Unavailable', color: healthStatus.database_connected ? 'text-emerald-600' : 'text-amber-600' },
+              { label: 'Redis Cache', value: healthStatus.redis_connected ? 'Connected' : 'Unavailable', color: healthStatus.redis_connected ? 'text-emerald-600' : 'text-amber-600' },
+              { label: 'Simulator', value: healthStatus.simulator_status === 'active' ? 'Active' : 'Inactive', color: healthStatus.simulator_status === 'active' ? 'text-emerald-600' : 'text-red-600' },
+              { label: 'Live Data Mode', value: healthStatus.live_data_mode ? 'Enabled' : 'Disabled', color: healthStatus.live_data_mode ? 'text-blue-600' : 'text-slate-500' },
+            ].map((item) => (
+              <div key={item.label} className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <div className="text-[10px] text-slate-500 uppercase font-semibold mb-1">{item.label}</div>
+                <div className={`text-sm font-bold ${item.color} truncate`} title={item.value}>{item.value}</div>
+              </div>
+            ))}
+          </div>
+          {healthStatus.data_source?.last_external_error && (
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
+              <strong>Last External Feed Error:</strong> {healthStatus.data_source.last_external_error}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 1. Model Performance KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">

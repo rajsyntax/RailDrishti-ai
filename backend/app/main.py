@@ -10,6 +10,8 @@ from app.api.v1.router import api_router
 from app.api.v1.websocket import router as ws_router
 from app.services.simulator import run_simulation_loop
 from app.database.session import init_db, close_db
+from app.services.redis_client import init_redis, close_redis
+from app.services.data_source_manager import data_source_manager
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s – %(message)s")
 logger = logging.getLogger(__name__)
@@ -20,13 +22,24 @@ async def lifespan(app: FastAPI):
     """
     Startup:
       1. Attempt PostgreSQL init (non-blocking – continues on failure).
-      2. Launch the train simulator as a background task.
+      2. Attempt Redis init (non-blocking – continues on failure).
+      3. Initialize data source manager.
+      4. Launch the train simulator as a background task.
     Shutdown:
       1. Cancel simulator task.
       2. Dispose DB engine.
+      3. Close Redis connection.
     """
     # DB init (graceful fallback if unavailable)
     await init_db()
+
+    # Redis init (graceful fallback if unavailable)
+    await init_redis()
+
+    # Initialize data source manager with configured mode
+    mode = settings.DATA_SOURCE_MODE
+    if mode != "SIMULATOR":
+        data_source_manager.set_mode(mode)
 
     # Start simulator in background – does NOT block requests
     sim_task = asyncio.create_task(run_simulation_loop(), name="train_simulator")
@@ -42,6 +55,7 @@ async def lifespan(app: FastAPI):
         pass
 
     await close_db()
+    await close_redis()
     logger.info("RailDrishti AI shutdown complete.")
 
 
@@ -78,6 +92,8 @@ app.include_router(ws_router)
 @app.get("/", summary="Root Welcome & Metadata")
 async def root():
     from app.database.session import DB_AVAILABLE
+    from app.services.redis_client import is_redis_available
+    from app.services.data_source_manager import data_source_manager
     return {
         "message": f"Welcome to {settings.PROJECT_NAME} API",
         "version": settings.VERSION,
@@ -85,5 +101,8 @@ async def root():
         "health_endpoint": f"{settings.API_V1_STR}/health",
         "websocket_endpoint": "/ws/live-updates",
         "database_mode": "postgresql" if DB_AVAILABLE else "memory-only",
+        "redis_connected": is_redis_available(),
+        "data_source_mode": data_source_manager.mode.value,
+        "active_source": data_source_manager.active_source,
         "disclaimer": settings.DATA_MODE_DISCLAIMER,
     }

@@ -123,7 +123,7 @@ class LiveTrainStateModel(Base):
 
     id                        = Column(String(36), primary_key=True, default=_uuid)
     train_id                  = Column(String(10), ForeignKey("trains.train_id"), nullable=False, index=True)
-    recorded_at               = Column(DateTime(timezone=True), default=_now, index=True)
+    event_time                = Column(DateTime(timezone=True), default=_now, index=True)
     latitude                  = Column(Float,   nullable=False)
     longitude                 = Column(Float,   nullable=False)
     speed_kmph                = Column(Float,   nullable=False, default=0.0)
@@ -132,8 +132,15 @@ class LiveTrainStateModel(Base):
     distance_to_next_station  = Column(Float,   nullable=True)
     delay_minutes             = Column(Integer, nullable=False, default=0)
     status                    = Column(String(20), nullable=False, default="RUNNING")
+    source_type               = Column(String(30), nullable=True, default="SIMULATOR")
+    source_timestamp          = Column(DateTime(timezone=True), nullable=True)
+    data_freshness_seconds   = Column(Float,   nullable=True)
 
     train = relationship("TrainModel", back_populates="live_states")
+
+    __table_args__ = (
+        Index("ix_live_train_state_train_time", "train_id", "event_time"),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -146,14 +153,19 @@ class OperationalEventModel(Base):
     event_type       = Column(String(30),  nullable=False)  # SIGNAL_FAULT / TRACK_BLOCK / SPEED_RESTRICTION / WEATHER
     severity         = Column(String(10),  nullable=False, default="MEDIUM")  # LOW / MEDIUM / HIGH / CRITICAL
     affected_train_id= Column(String(10),  ForeignKey("trains.train_id"),        nullable=True,  index=True)
-    affected_section = Column(String(30),  ForeignKey("rail_sections.section_id"), nullable=True)
+    affected_section = Column(String(30),  ForeignKey("rail_sections.section_id"), nullable=True, index=True)
     started_at       = Column(DateTime(timezone=True), nullable=False, default=_now)
     expected_end_at  = Column(DateTime(timezone=True), nullable=True)
     duration_minutes = Column(Integer,     nullable=True)
     speed_limit_kmph = Column(Float,       nullable=True)
     description      = Column(Text,        nullable=True)
     is_active        = Column(Boolean,     nullable=False, default=True)
+    source_type      = Column(String(30),  nullable=True, default="SIMULATOR")
     created_at       = Column(DateTime(timezone=True), default=_now)
+
+    __table_args__ = (
+        Index("ix_op_events_section_active", "affected_section", "is_active"),
+    )
 
     train   = relationship("TrainModel",       back_populates="events")
     section = relationship("RailSectionModel", back_populates="events")
@@ -196,6 +208,7 @@ class AlertModel(Base):
     is_active    = Column(Boolean,     nullable=False, default=True)
     created_at   = Column(DateTime(timezone=True), default=_now, index=True)
     expires_at   = Column(DateTime(timezone=True), nullable=True)
+    source_mode  = Column(String(20),  nullable=True, default="SIMULATOR")
 
 
 # ---------------------------------------------------------------------------
@@ -247,3 +260,52 @@ class WeatherEventModel(Base):
     is_active    = Column(Boolean,     nullable=False, default=True)
     description  = Column(Text,        nullable=True)
     created_at   = Column(DateTime(timezone=True), default=_now)
+
+
+# ---------------------------------------------------------------------------
+# 11. external_feed_raw_events
+# ---------------------------------------------------------------------------
+class ExternalFeedRawEventModel(Base):
+    __tablename__ = "external_feed_raw_events"
+
+    event_id              = Column(String(36),  primary_key=True, default=_uuid)
+    provider_name         = Column(String(50),  nullable=False)
+    train_number          = Column(String(10),  nullable=False, index=True)
+    fetched_at            = Column(DateTime(timezone=True), default=_now, index=True)
+    provider_timestamp    = Column(DateTime(timezone=True), nullable=True)
+    payload_hash          = Column(String(64),  nullable=True)
+    sanitized_payload_json= Column(Text,        nullable=True)
+    ingestion_status      = Column(String(20),  nullable=False, default="SUCCESS")
+    error_message         = Column(Text,        nullable=True)
+    created_at            = Column(DateTime(timezone=True), default=_now)
+
+
+# ---------------------------------------------------------------------------
+# 12. model_metrics
+# ---------------------------------------------------------------------------
+class ModelMetricsModel(Base):
+    __tablename__ = "model_metrics"
+
+    id                    = Column(String(36),  primary_key=True, default=_uuid)
+    model_version         = Column(String(20),  nullable=False, index=True)
+    metric_name           = Column(String(50),  nullable=False)
+    metric_value          = Column(Float,        nullable=False)
+    section_id            = Column(String(30),  ForeignKey("rail_sections.section_id"), nullable=True)
+    computed_at           = Column(DateTime(timezone=True), default=_now, index=True)
+    created_at            = Column(DateTime(timezone=True), default=_now)
+
+
+# ---------------------------------------------------------------------------
+# 13. model_versions
+# ---------------------------------------------------------------------------
+class ModelVersionModel(Base):
+    __tablename__ = "model_versions"
+
+    id                    = Column(String(36),  primary_key=True, default=_uuid)
+    version               = Column(String(20),  nullable=False, unique=True, index=True)
+    algorithm             = Column(String(50),  nullable=False)
+    training_timestamp    = Column(DateTime(timezone=True), nullable=False)
+    total_training_samples= Column(Integer,     nullable=False, default=0)
+    test_evaluation_samples= Column(Integer,    nullable=False, default=0)
+    is_active             = Column(Boolean,     nullable=False, default=False)
+    created_at            = Column(DateTime(timezone=True), default=_now)

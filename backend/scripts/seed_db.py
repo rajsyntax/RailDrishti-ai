@@ -5,6 +5,9 @@ Usage:
     # From repo root, with venv activated and PostgreSQL running:
     python backend/scripts/seed_db.py
 
+    # Reset mode (clears existing data before seeding):
+    python backend/scripts/seed_db.py --reset
+
 This script:
   1. Creates all tables (if they don't already exist).
   2. Loads stations, trains, rail_sections, train_schedule from CSV files in data/.
@@ -152,10 +155,31 @@ async def seed(session: AsyncSession):
 
 
 async def main():
+    reset = "--reset" in sys.argv
+
+    if reset:
+        print("=" * 60)
+        print("WARNING: --reset mode enabled.")
+        print("This will DELETE all existing data before re-seeding.")
+        print("This action is NOT recommended for production databases.")
+        print("=" * 60)
+        confirm = input("Type 'yes' to confirm reset: ")
+        if confirm.strip().lower() != "yes":
+            print("Reset cancelled.")
+            return
+
     print(f"Connecting to: {settings.DATABASE_URL}")
     engine = create_async_engine(settings.DATABASE_URL, echo=False, future=True)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    if reset:
+        print("Clearing existing data...")
+        async with engine.begin() as conn:
+            for table in reversed(Base.metadata.sorted_tables):
+                await conn.execute(text(f"TRUNCATE TABLE {table.name} CASCADE"))
+        print("All tables cleared.")
+
     SessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
     async with SessionLocal() as session:
         await seed(session)
