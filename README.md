@@ -2,185 +2,414 @@
 
 > **Dynamic ETA Forecasting and Railway Operations Intelligence for Coaching Trains**
 
+RailDrishti AI is an explainable, real-time ETA intelligence platform for Indian Railway coaching trains. It transforms simulated live train movement, historical sectional patterns, operational events, congestion, restrictions, and weather conditions into dynamic station-wise ETA forecasts, confidence ranges, delay explanations, and actionable operational alerts.
+
+> **Prototype Mode:** This project uses synthetic and simulated railway operational data. It does not access live RTIS, COA, NTES, signalling, passenger, or other protected Indian Railways systems. Production integration requires authorized Railway feeds.
+
 ---
 
-## SIH Problem Relevance
+## Problem Statement
 
-RailDrishti AI addresses the Smart India Hackathon challenge of leveraging AI/ML for Indian Railways operational efficiency. The platform provides dynamic ETA forecasting, explainable delay reasoning, congestion intelligence, and decision-support dashboards for passengers, station operators, and control-room staff — all critical pain points in India's railway network.
+Traditional timetable-based ETA estimates often do not reflect actual railway operating conditions. Train arrival time can change due to:
+
+- Signal halts and unscheduled stops
+- Downstream congestion and low headway
+- Temporary speed restrictions
+- Rain, fog, and weather-related speed reductions
+- Extended station dwell time
+- Maintenance blocks
+- Platform conflicts
+- Cascading delays from preceding trains
+
+These uncertainties affect passengers, station staff, platform planning, crew coordination, cleaning operations, catering, feeder transport, and control-room decision-making.
+
+---
+
+## Our Solution
+
+RailDrishti AI predicts the **expected arrival time at every upcoming station**, not only at the destination. It continuously recalculates ETA whenever a train moves, slows, halts, faces congestion, or encounters an operational event.
+
+Instead of showing only:
+
+```text
+Train delayed by 21 minutes
+```
+
+RailDrishti AI provides:
+
+```text
+Expected arrival: 18:46
+Expected range: 18:42–18:54
+Confidence: High
+Main cause: Signal halt and moderate congestion in the next section
+Recovery potential: 4–7 minutes later in the journey
+```
 
 ---
 
 ## Key Features
 
-- **Simulated Real-Time Train Movement** — Kinematic simulator updates train positions every 5 seconds across the NDLS–MMCT corridor
-- **Dynamic Multi-Station ETA** — Probabilistic arrival predictions for every upcoming station
-- **P10/P50/P90 Confidence Intervals** — Statistical bounds on arrival times with confidence labels (HIGH/MEDIUM/LOW)
-- **Explainable Delay Reasoning** — Natural language explanations of delay factors (signal halt, congestion, weather, speed restrictions, propagation)
-- **Congestion Scoring** — 4-factor composite score: occupancy, trains ahead, headway risk, restriction severity
-- **Delay Propagation Alerts** — 6-category alert system (ETA_CHANGED, SIGNAL_HALT, HIGH_CONGESTION, PROPAGATION_RISK, GPS_STALE, PLATFORM_PREPARATION)
-- **Passenger Dashboard** — Live train tracking, ETA cards, station progression timeline, bilingual (EN/HI) support
-- **Station Operations Dashboard** — Platform occupancy Gantt, action center, passenger information board preview
-- **Control-Room Dashboard** — Live corridor map, risk alerts, KPI cards, train telemetry table
-- **Hybrid ML + Rule-Based ETA** — LightGBM quantile regressors with physics-based fallback
+| Feature | Description |
+|---|---|
+| Real-time train simulation | Kinematic simulator updates GPS-like train position, speed, delay, and status every 5 seconds |
+| Dynamic multi-station ETA | Predicts arrival time for every upcoming station |
+| P10/P50/P90 confidence range | Shows optimistic, expected, and conservative arrival estimates |
+| Explainable delay reasoning | Converts ETA factors into simple natural-language explanations |
+| Congestion intelligence | Uses occupancy, trains ahead, headway risk, and restriction severity |
+| Delay propagation | Predicts secondary delay risk for trains following a delayed train |
+| Passenger dashboard | Live train tracking, ETA cards, route timeline, alerts, and EN/HI interface |
+| Station operations dashboard | Dynamic arrivals, platform occupancy Gantt, action center, and PIDS preview |
+| Control-room dashboard | Live corridor map, risk alerts, train telemetry, congestion view, and disruption simulator |
+| Hybrid ETA prediction | ML-based ETA prediction with operational rule-based fallback |
+| Real-time updates | WebSocket updates every 5 seconds, with polling fallback |
+| Resilient demo mode | In-memory mode works even if PostgreSQL or Redis is unavailable |
+
+---
+
+## System Architecture
+
+```text
+                         ┌──────────────────────────────┐
+                         │  Train Movement Simulator    │
+                         │  GPS | Speed | Delay | Status│
+                         └──────────────┬───────────────┘
+                                        │
+         ┌──────────────────────────────┼──────────────────────────────┐
+         │                              │                              │
+         ▼                              ▼                              ▼
+┌────────────────────┐        ┌────────────────────┐        ┌────────────────────┐
+│ Route & Schedule   │        │ Operational Events │        │ Historical Runs    │
+│ Stations | Sections│        │ Halt | TSR | Rain  │        │ Delays | Run Times │
+└──────────┬─────────┘        └──────────┬─────────┘        └──────────┬─────────┘
+           └─────────────────────────────┼─────────────────────────────┘
+                                         ▼
+                        ┌─────────────────────────────────┐
+                        │ Real-Time Feature Engine         │
+                        │ Speed | Distance | Dwell | Events│
+                        │ Traffic | Weather | Restrictions │
+                        └──────────────┬──────────────────┘
+                                       ▼
+                        ┌─────────────────────────────────┐
+                        │ Hybrid ETA Intelligence Engine  │
+                        │ Rules + ML + Operational Limits │
+                        │ P10/P50/P90 + Explanation       │
+                        └──────────────┬──────────────────┘
+                                       ▼
+          ┌────────────────────────────┼────────────────────────────┐
+          ▼                            ▼                            ▼
+┌──────────────────────┐    ┌──────────────────────┐    ┌──────────────────────┐
+│ Passenger Dashboard  │    │ Station Operations   │    │ Control Center       │
+│ ETA | Alerts | Map   │    │ Platform | Actions   │    │ Risk | Congestion    │
+└──────────────────────┘    └──────────────────────┘    └──────────────────────┘
+```
 
 ---
 
 ## Technology Stack
 
 | Layer | Technology |
-|-------|-----------|
-| Frontend | React 18, TypeScript, Vite, Tailwind CSS, Leaflet, Recharts |
-| Backend | Python 3.11+, FastAPI, Uvicorn, SQLAlchemy async, Pydantic |
-| ML | LightGBM, scikit-learn, HistGradientBoosting, quantile regression |
-| Database | PostgreSQL + PostGIS (optional; in-memory fallback) |
-| Cache | Redis (optional) |
-| Real-time | WebSocket (5-second broadcast loop) |
-| Deployment | Docker Compose (backend, frontend, PostgreSQL, Redis) |
+|---|---|
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS |
+| Mapping | Leaflet, OpenStreetMap |
+| Charts | Recharts |
+| Backend | Python 3.11+, FastAPI, Uvicorn, Pydantic |
+| Database | PostgreSQL + PostGIS, with in-memory fallback |
+| Cache | Redis, optional for prototype mode |
+| Real-time | WebSocket updates with polling fallback |
+| Machine Learning | LightGBM, scikit-learn, quantile regression |
+| Deployment | Docker, Docker Compose |
+| Testing | API assertions, TypeScript validation, production frontend build |
 
 ---
 
-## Architecture Overview
+## ETA Prediction Approach
 
-```
-Client Browsers
-    │
-    ▼
-Frontend (Vite + React + TypeScript)
-    │  REST + WebSocket
-    ▼
-FastAPI Backend (Python 3.11+)
-    ├── Train Simulator Loop (every 5 s, asyncio background task)
-    ├── In-Memory State Store  ←→  [Optional] Redis Cache
-    ├── REST APIs (/api/v1/*)
-    ├── WebSocket (/ws/live-updates)
-    ├── ML Hybrid Predictor (LightGBM + rule-based fallback)
-    └── [Optional] PostgreSQL via SQLAlchemy async
+RailDrishti AI uses a hybrid approach that combines dynamic operational logic with machine-learning-based prediction.
+
+```text
+Sectional baseline travel time
+        +
+Current train speed and remaining distance
+        +
+Congestion and traffic impact
+        +
+Signal halt / weather / speed restriction impact
+        +
+Historical sectional running behaviour
+        -
+Available timetable recovery margin
+        =
+Dynamic ETA for upcoming stations
 ```
 
-**Graceful fallback:** the backend starts in **memory-only mode** when PostgreSQL is unreachable (no Docker needed for local development).
+### Effective speed model
+
+\[
+V_{\text{effective}} =
+V_{\text{base}}
+\times W_{\text{traffic}}
+\times W_{\text{weather}}
+\times W_{\text{restriction}}
+\times W_{\text{event}}
+\]
+
+### Congestion score
+
+\[
+CongestionScore =
+0.35 \times Occupancy +
+0.25 \times TrainsAhead +
+0.20 \times LowHeadwayRisk +
+0.20 \times RestrictionSeverity
+\]
+
+| Score | Congestion Level | UI Color |
+|---:|---|---|
+| 0.00–0.30 | Low | Green |
+| 0.31–0.60 | Moderate | Amber |
+| 0.61–1.00 | High | Red |
 
 ---
 
-## Local Setup
+## Dashboard Modules
+
+### Passenger Dashboard
+
+- Search and select active train
+- Live GPS-like train position and running status
+- Current speed, current section, and delay
+- Dynamic ETA for selected station
+- Scheduled time versus expected time
+- P10/P50/P90 confidence range
+- ETA confidence label: High, Medium, or Low
+- Delay trend: Improving, Stable, or Worsening
+- Plain-language delay explanation
+- Train route timeline and map
+- EN/HI language support
+
+### Control Center
+
+- Live railway corridor map
+- Color-coded moving train markers
+- Active train, delayed train, high-risk train, and congestion KPIs
+- Real-time alerts
+- Congestion score by railway section
+- Delay-propagation risk for following trains
+- Train detail side panel
+- Disruption simulation panel
+
+Supported simulated events:
+
+- Signal halt
+- Temporary speed restriction
+- Heavy rain
+- Congestion
+- Unscheduled stop
+- GPS outage
+- Delay recovery scenario
+
+### Station Operations Dashboard
+
+- Dynamic upcoming arrival board
+- High-risk and delayed train identification
+- Platform occupancy Gantt timeline
+- Platform conflict indicators
+- Action center for station teams
+- Passenger Information Display System preview
+- Recommended actions for platform preparation, cleaning, passenger display, and feeder transport
+
+---
+
+## Quick Start
 
 ### Prerequisites
-- Python 3.11+
-- Node.js 18+
+
+```text
+Python 3.11+
+Node.js 18+
+Docker Desktop (recommended but optional)
+```
+
+---
+
+## Run With Docker Compose
+
+```powershell
+git clone [https://github.com/rajsyntax/RailDrishti-ai.git](https://github.com/rajsyntax/RailDrishti-ai.git)
+cd RailDrishti-ai
+
+docker compose up --build
+```
+
+Open the following services:
+
+| Service | URL |
+|---|---|
+| Frontend | http://localhost:5173 |
+| Backend API | http://localhost:8000 |
+| Swagger API Documentation | http://localhost:8000/docs |
+| PostgreSQL | localhost:5432 |
+| Redis | localhost:6379 |
+
+---
+
+## Run Locally
 
 ### Backend
 
 ```powershell
 cd backend
 
-# Create and activate virtual environment
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 
-# Install dependencies
 pip install -r requirements.txt
 
-# (Optional) copy and edit environment file
 copy ..\.env.example .env
 
-# Start the dev server – simulator loop starts automatically
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-The server starts without PostgreSQL — it logs:
-```
-⚠️  Database unavailable … Running in memory-only mode.
-```
-All APIs are fully functional in memory-only mode.
+The backend can run in memory-only mode when PostgreSQL is not available.
 
-Visit **http://localhost:8000/docs** for the interactive Swagger UI.
+```text
+Database unavailable — running in memory-only mode.
+```
 
 ### Frontend
 
+Open a new terminal window:
+
 ```powershell
 cd frontend
+
 npm install
 npm run dev
 ```
 
-Frontend runs on **http://localhost:5173**.
+Open:
 
----
-
-## Docker Compose Setup
-
-```powershell
-# From repo root
-docker compose up --build
+```text
+http://localhost:5173
 ```
 
-| Service  | URL                     |
-|----------|-------------------------|
-| Backend  | http://localhost:8000   |
-| Frontend | http://localhost:5173   |
-| Postgres | localhost:5432          |
-| Redis    | localhost:6379          |
-
 ---
 
-## API Documentation
+## API Reference
 
-Interactive Swagger UI: **http://localhost:8000/docs**
+Interactive Swagger API documentation:
+
+```text
+http://localhost:8000/docs
+```
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/v1/health` | System health and mode status |
-| `GET` | `/api/v1/trains` | Live state for all 5 active trains |
-| `GET` | `/api/v1/trains/{train_id}/live` | Single train real-time telemetry |
-| `GET` | `/api/v1/trains/{train_id}/route` | Route stations + section metrics |
-| `GET` | `/api/v1/trains/{train_id}/upcoming-stations` | Upcoming stops with scheduled arrival |
-| `GET` | `/api/v1/trains/{train_id}/eta` | Full dynamic ETA intelligence (P10/P50/P90, confidence, factors) |
-| `GET` | `/api/v1/trains/{train_id}/explain` | Explainable AI delay factor attribution |
-| `GET` | `/api/v1/sections` | All 8 corridor rail sections |
-| `GET` | `/api/v1/sections/{id}` | Section metrics |
-| `GET` | `/api/v1/sections/{id}/congestion` | Real-time congestion score & 4-factor breakdown |
-| `GET` | `/api/v1/alerts` | Real-time control room alerts |
-| `POST`| `/api/v1/simulate/reset` | Reset simulation to seed state |
-| `GET` | `/api/v1/stations` | All 9 corridor stations |
-| `GET` | `/api/v1/stations/{code}` | Station detail |
-| `GET` | `/api/v1/stations/{code}/arrivals` | Scheduled arrivals at station |
-| `WS`  | `/ws/live-updates` | Multi-channel real-time feed |
+|---|---|---|
+| `GET` | `/api/v1/health` | System health and current operating mode |
+| `GET` | `/api/v1/trains` | Live state of all active trains |
+| `GET` | `/api/v1/trains/{train_id}/live` | Current train telemetry |
+| `GET` | `/api/v1/trains/{train_id}/route` | Route stations and section details |
+| `GET` | `/api/v1/trains/{train_id}/upcoming-stations` | Upcoming train stops |
+| `GET` | `/api/v1/trains/{train_id}/eta` | Dynamic ETA prediction with P10/P50/P90 |
+| `GET` | `/api/v1/trains/{train_id}/explain` | ETA factor attribution |
+| `GET` | `/api/v1/sections` | All railway sections |
+| `GET` | `/api/v1/sections/{section_id}` | Railway section details |
+| `GET` | `/api/v1/sections/{section_id}/congestion` | Section congestion score and factors |
+| `GET` | `/api/v1/alerts` | Real-time passenger and operations alerts |
+| `GET` | `/api/v1/stations` | Station directory |
+| `GET` | `/api/v1/stations/{station_code}` | Station details |
+| `GET` | `/api/v1/stations/{station_code}/arrivals` | Station arrival forecasts |
+| `POST` | `/api/v1/simulate/reset` | Reset simulator to baseline state |
+| `WS` | `/ws/live-updates` | Live train, ETA, congestion, and alert updates |
 
 ---
 
-## Demo Scenario Flow
+## SIH Demo Flow
 
-1. Open **http://localhost:5173** (Passenger Dashboard)
-2. Select Train 12952 (Mumbai Rajdhani) — observe live position, speed, and delay
-3. View dynamic ETA with P10/P50/P90 confidence range for any station
-4. Navigate to **Control Center** — observe live corridor map with train markers
-5. Inject a **Signal Halt** event — watch ETA update and delay explanation change
-6. Observe **congestion propagation** — trailing trains receive secondary delay alerts
-7. Navigate to **Station Operations** — view platform Gantt, action cards, and PIDS preview
-8. **Reset simulation** to restore nominal operations
+1. Open the Passenger Dashboard.
+2. Select **Train 12952 — Mumbai Rajdhani**.
+3. Show current train location, speed, delay, ETA, and confidence range.
+4. Open the Control Center.
+5. Inject a **Signal Halt** event on the upcoming railway section.
+6. Show the dynamic ETA update and increased arrival uncertainty.
+7. Show the explainable delay factors.
+8. Show congestion score and secondary delay risk for trailing trains.
+9. Open the Station Operations Dashboard.
+10. Show the updated dynamic arrival, platform Gantt, action center, and PIDS preview.
+11. Reset simulation to return to baseline state.
+
+For a detailed demonstration checklist, see:
+
+```text
+docs/demo-checklist.md
+```
+
+---
+
+## Validation and Reliability
+
+The prototype has been validated through:
+
+- Backend API assertion tests
+- FastAPI endpoint validation
+- TypeScript static type validation
+- Frontend production build validation
+- WebSocket real-time update checks
+- In-memory database fallback tests
+- Simulator workflow tests
+- Dynamic ETA, confidence, explanation, congestion, and alert tests
+
+> Model accuracy metrics should be described as prototype validation on simulated or historical-like data unless evaluated on authorized Indian Railways operational data.
 
 ---
 
 ## Production Roadmap
 
-- Integration with authorized Indian Railways data feeds (RTIS, COA, NTES)
-- Redis-backed session and state management
-- Horizontal scaling with Kubernetes
-- Mobile application (React Native)
-- SMS/WhatsApp notification gateway integration
-- Historical analytics and trend reporting
+| Phase | Scope |
+|---|---|
+| Pilot | Authorized RTIS/REMMLOT location feeds, COA movement events, timetable and route master integration |
+| Prediction improvement | Historical train records, traffic occupancy, restrictions, weather, and disruption data |
+| Operational rollout | Station displays, control-room dashboards, mobile APIs, and platform planning integration |
+| Scale | Event streaming, Redis cache, zone-wise deployment, model monitoring |
+| Passenger communication | SMS, WhatsApp, push notifications, regional-language messages |
+| Continuous improvement | ETA accuracy monitoring, model drift detection, periodic retraining |
 
 ---
 
-## Team Members
+## Responsible Use
+
+RailDrishti AI is a **decision-support platform**, not a safety-critical railway dispatching or signalling system.
+
+- It does not issue train movement authority.
+- It does not replace station masters, controllers, or signalling systems.
+- Human railway operators retain all safety and operational decisions.
+- ETA forecasts include uncertainty to prevent false precision.
+- Production deployment requires authorized data access, security controls, audit logs, role-based access, and Railway approval.
+
+---
+
+## Team
 
 | Role | Name |
-|------|------|
-| Team Lead | _[Name Placeholder]_ |
-| Backend Developer | _[Name Placeholder]_ |
-| Frontend Developer | _[Name Placeholder]_ |
-| ML Engineer | _[Name Placeholder]_ |
-| UI/UX Designer | _[Name Placeholder]_ |
+|---|---|
+| Team Lead | _Add team member name_ |
+| Backend Developer | _Add team member name_ |
+| Frontend Developer | _Add team member name_ |
+| ML Engineer | _Add team member name_ |
+| UI/UX Designer | _Add team member name_ |
+| Data and Simulation Engineer | _Add team member name_ |
 
 ---
 
-> **Prototype Mode: This project uses synthetic and simulated railway operational data. It does not access live RTIS, COA, NTES, signalling, or other protected Indian Railways systems. Production integration requires authorized Railway feeds.**
+## Repository
+
+- GitHub: https://github.com/rajsyntax/RailDrishti-ai
+- Stable development branch: `main`
+- SIH demo branch: `demo-safe`
+- Demo release tag: `v1.0-demo`
+
+---
+
+## Disclaimer
+
+This project is a Smart India Hackathon prototype created for demonstration and evaluation. All location, train movement, timetable, operational-event, congestion, weather, and historical-running data used by this project is synthetic or simulated. No live RTIS, COA, NTES, signalling, passenger, or protected Indian Railways operational system is accessed.
