@@ -1,0 +1,61 @@
+# Environment files / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Python virtual environments and caches
+venv/
+.venv/
+backend/venv/
+backend/.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / React
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+frontend/.vite/
+
+# Build/test artifacts
+build/
+coverage/
+htmlcov/
+test-results/
+playwright-report/
+
+# Logs
+*.log
+logs/
+
+# Local databases and Docker volumes
+*.db
+*.sqlite
+*.sqlite3
+postgres_data/
+redis_data/
+data/postgres/
+data/redis/
+
+# Reproducible ML artifacts
+backend/models/*.pkl
+backend/models/*.joblib
+backend/models/*.bin
+backend/app/ml/models/*.pkl
+backend/app/ml/models/*.joblib
+backend/app/ml/models/*.bin
+*.onnx
+
+# IDE and operating system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

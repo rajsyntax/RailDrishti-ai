@@ -1,0 +1,118 @@
+{
+  "model_version": "v2.4-hybrid-lgbm",
+  "model_status": "ONLINE_ACTIVE",
+  "algorithm": "LightGBM Regressor",
+  "training_timestamp": "2026-10-01T11:57:50.446067+00:00",
+  "total_training_samples": 8000,
+  "test_evaluation_samples": 1600,
+  "metrics": {
+    "ml_model": {
+      "mae": 3.54,
+      "median_absolute_error": 2.1,
+      "pct_within_5min": 83.9,
+      "pct_within_10min": 95.9,
+      "p90_absolute_error": 6.41
+    },
+    "baseline_model": {
+      "mae": 8.91,
+      "median_absolute_error": 2.96,
+      "pct_within_5min": 72.5,
+      "pct_within_10min": 92.9,
+      "p90_absolute_error": 8.43
+    },
+    "mae_improvement_pct": 60.3
+  },
+  "feature_importance_top": [
+    {
+      "feature": "current_speed_kmph",
+      "importance": 0.3489
+    },
+    {
+      "feature": "distance_to_next_station_km",
+      "importance": 0.3102
+    },
+    {
+      "feature": "unscheduled_halt_minutes",
+      "importance": 0.0824
+    },
+    {
+      "feature": "scheduled_recovery_margin",
+      "importance": 0.0445
+    },
+    {
+      "feature": "historical_section_median_minutes",
+      "importance": 0.0424
+    },
+    {
+      "feature": "congestion_score",
+      "importance": 0.0421
+    },
+    {
+      "feature": "restriction_active",
+      "importance": 0.0249
+    },
+    {
+      "feature": "current_delay_minutes",
+      "importance": 0.0238
+    },
+    {
+      "feature": "weather_severity",
+      "importance": 0.022
+    },
+    {
+      "feature": "trains_ahead",
+      "importance": 0.018
+    }
+  ],
+  "section_performance": {
+    "SEC_MTJ_BTE": {
+      "samples": 226,
+      "ml_mae": 1.99,
+      "baseline_mae": 3.88,
+      "accuracy_5min": 94.2
+    },
+    "SEC_GGC_SWM": {
+      "samples": 196,
+      "ml_mae": 2.32,
+      "baseline_mae": 5.79,
+      "accuracy_5min": 92.3
+    },
+    "SEC_NDLS_MTJ": {
+      "samples": 177,
+      "ml_mae": 2.96,
+      "baseline_mae": 7.58,
+      "accuracy_5min": 87.0
+    },
+    "SEC_RATL_BRC": {
+      "samples": 206,
+      "ml_mae": 3.41,
+      "baseline_mae": 8.19,
+      "accuracy_5min": 78.6
+    },
+    "SEC_SWM_KOTA": {
+      "samples": 202,
+      "ml_mae": 2.38,
+      "baseline_mae": 7.68,
+      "accuracy_5min": 87.6
+    },
+    "SEC_KOTA_RATL": {
+      "samples": 198,
+      "ml_mae": 3.29,
+      "baseline_mae": 8.2,
+      "accuracy_5min": 78.8
+    },
+    "SEC_BRC_MMCT": {
+      "samples": 215,
+      "ml_mae": 8.81,
+      "baseline_mae": 18.9,
+      "accuracy_5min": 67.0
+    },
+    "SEC_BTE_GGC": {
+      "samples": 180,
+      "ml_mae": 2.8,
+      "baseline_mae": 11.0,
+      "accuracy_5min": 86.1
+    }
+  },
+  "is_hybrid_active": true
+}

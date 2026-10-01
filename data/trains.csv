@@ -1,0 +1,6 @@
+train_id,train_name,category,priority,source_station,destination_station,total_distance_km,rake_type
+12952,Mumbai Rajdhani,Rajdhani,1,NDLS,MMCT,1385.0,LHB
+12413,Rajdhani Express,Express,2,NDLS,MMCT,1385.0,LHB
+19020,Dehradun Express,Express,3,NDLS,MMCT,1385.0,ICF
+12988,Ajmer Superfast,Superfast,2,NDLS,MMCT,1385.0,LHB
+12910,Gujarat Mail,Mail Express,3,NDLS,MMCT,1385.0,ICF
