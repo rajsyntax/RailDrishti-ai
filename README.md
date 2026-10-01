@@ -370,10 +370,10 @@ http://localhost:8000/docs
 5. Inject a **Signal Halt** event on the upcoming railway section.
 6. Show the dynamic ETA update and increased arrival uncertainty.
 7. Show the explainable delay factors.
-7. Show congestion score and secondary delay risk for trailing trains.
-8. Open the Station Operations Dashboard.
-9. Show the updated dynamic arrival, platform Gantt, action center, and PIDS preview.
-10. Reset simulation to return to baseline state.
+8. Show congestion score and secondary delay risk for trailing trains.
+9. Open the Station Operations Dashboard.
+10. Show the updated dynamic arrival, platform Gantt, action center, and PIDS preview.
+11. Reset simulation to return to baseline state.
 
 For a detailed demonstration checklist, see:
 
