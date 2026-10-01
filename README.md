@@ -392,12 +392,12 @@ RailDrishti AI is a **decision-support platform**, not a safety-critical railway
 
 | Role | Name |
 |---|---|
-| Team Lead | _Add team member name_ |
-| Backend Developer | _Add team member name_ |
-| Frontend Developer | _Add team member name_ |
-| ML Engineer | _Add team member name_ |
-| UI/UX Designer | _Add team member name_ |
-| Data and Simulation Engineer | _Add team member name_ |
+| Team Lead | _Rajesh Kumar_ |
+| Backend Developer | _Madhav_ |
+| Frontend Developer | _Chandrama Kumar_ |
+| ML Engineer | _Saumya Sachin_ |
+| UI/UX Designer | _Sneha Jogi_ |
+| Data and Simulation Engineer | _Nitil Kumar_ |
 
 ---
 
